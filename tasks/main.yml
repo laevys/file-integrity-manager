@@ -1,0 +1,20 @@
+---
+- name: Installer Rust et Cargo
+  include_tasks: install_rust.yml
+
+- name: Configurer auditd pour FIM (AVANT FIM)
+  include_tasks: setup_audit.yml
+
+- name: Compiler FIM depuis les sources
+  include_tasks: build_fim.yml
+
+- name: Déployer la configuration FIM
+  include_tasks: deploy_config.yml
+
+- name: Déployer le service systemd
+  include_tasks: systemd.yml
+
+- name: Attendre que les services démarrent
+  wait_for:
+    timeout: 10
+

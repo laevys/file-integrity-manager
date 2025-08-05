@@ -1,0 +1,105 @@
+node: "FIM"
+
+# Events configuration, où stocker les événements générés
+events:
+  watcher: Recommended
+  destination: file
+  file: /var/log/fim/events.json
+  max_file_checksum: 128
+
+  # Injecte UID→user et bloc who:{…} dans chaque event JSON
+  resolve_user: true
+  who_data: true
+  log_all_events: true
+
+# Audit étendu (via auditd), obligatoire pour remonter user/process
+audit:
+  - path: /etc
+    labels: ["etc", "linux", "config"]
+    rule: rwax                      # <— trace Read/Write/Attr/eXec + UID/PID
+    ignore: [".swp", ".swx", ".log", ".conf~"]
+  - path: /bin
+    labels: ["bin", "linux", "system"]
+  - path: /usr/bin
+    labels: ["usr/bin", "linux", "system"]
+  - path: /sbin
+    labels: ["sbin", "linux", "system"]
+  - path: /usr/sbin
+    labels: ["usr/sbin", "linux", "system"]
+  - path: /var/spool/cron
+    labels: ["cron", "linux", "scheduled"]
+  - path: /opt
+    labels: ["opt", "linux", "applications"]
+    ignore: [".swp", ".swx", ".log", ".txt", ".gz", ".zip", ".conf~", ".out"]
+    exclude: ["/opt/cybereason", "/opt/splunkforwarder/var"]
+
+# Surveillance simple (inotify) pour les autres dossiers
+# /etc n’y figure pas pour ne pas masquer l’auditd
+monitor:
+  - path: /bin
+    labels: ["bin", "linux"]
+  - path: /usr/bin
+    labels: ["usr/bin", "linux"]
+  - path: /boot
+    labels: ["boot", "linux"]
+  - path: /sbin
+    labels: ["sbin", "linux"]
+  - path: /usr/local/bin
+    labels: ["usr/local/bin", "linux"]
+  - path: /usr/local/sbin
+    labels: ["usr/local/sbin", "linux"]
+  - path: /usr/sbin
+    labels: ["usr/sbin", "linux"]
+  - path: /usr/share/keyrings
+    labels: ["usr/share/keyrings", "linux"]
+  - path: /var/spool/cron
+    labels: ["var/spool/cron", "linux"]
+    ignore:
+      - ".swp"
+      - ".swx"
+      - ".log"
+      - ".conf~"
+  - path: /opt
+    labels: ["opt", "linux"]
+    ignore:
+      - ".swp"
+      - ".swx"
+      - ".log"
+      - ".txt"
+      - ".gz"
+      - ".zip"
+      - ".conf~"
+      - ".out"
+    exclude:
+      - "/opt/fim"                    # <— exclut le dossier d’installation
+      - "/opt/cybereason/sensor/Database"
+      - "/opt/cybereason/sensor/Logs"
+      - "/opt/cybereason/sensor/crs"
+      - "/opt/cybereason/sensor/av_engine_*"
+      - "/opt/splunkforwarder/var/log"
+      - "/opt/splunkforwarder/var/lib/splunk/fishbucket"
+      - "/opt/splunkforwarder/var/run"
+  - path: /app
+    labels: ["app", "linux"]
+    ignore:
+      - ".swp"
+      - ".swx"
+      - ".log"
+      - ".txt"
+      - ".gz"
+      - ".zip"
+      - ".conf~"
+      - ".out"
+
+# Base de données des checksums
+hashscanner:
+  enabled: true
+  file: /var/lib/fim/fim.db
+  interval: 1440
+  algorithm: sh256
+
+# Logs d’exécution de l’agent
+log:
+  file: /var/log/fim/fim.log
+  level: info
+
