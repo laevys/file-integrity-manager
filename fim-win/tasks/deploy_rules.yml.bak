@@ -1,6 +1,0 @@
----
-- name: Déployer les règles FIM
-  win_copy:
-    src: rules.yml
-    dest: "{{ fim_win_rules_path }}"
-

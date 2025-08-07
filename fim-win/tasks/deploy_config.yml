@@ -1,6 +1,0 @@
----
-- name: Déployer la configuration FIM Windows
-  win_copy:
-    src: Windows.yml
-    dest: "{{ fim_win_config_path }}"
-  notify: restart fim service

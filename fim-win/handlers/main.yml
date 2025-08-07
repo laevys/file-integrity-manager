@@ -1,6 +1,0 @@
----
-- name: restart fim service
-  win_service:
-    name: "{{ fim_service_name }}"
-    state: restarted
-  when: fim_create_service | default(true)
