@@ -1,0 +1,26 @@
+---
+- name: "Déploiement FIM achiefs v{{ fim_version }} sur Windows"
+  debug:
+    msg: "Début du déploiement FIM sur {{ inventory_hostname }}"
+
+- name: Inclure les tâches d'installation
+  include_tasks: install_fim.yml
+  tags:
+    - install
+    - fim
+
+- name: Inclure les tâches de déploiement de configuration
+  include_tasks: deploy_config.yml
+  tags:
+    - config
+    - fim
+
+#- name: Inclure les tâches de déploiement des règles
+#  include_tasks: deploy_rules.yml
+#  tags:
+#    - rules
+#    - fim
+
+- name: "Déploiement FIM terminé"
+  debug:
+    msg: "FIM achiefs v{{ fim_version }} déployé avec succès sur {{ inventory_hostname }}"

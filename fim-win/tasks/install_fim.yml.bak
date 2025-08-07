@@ -1,0 +1,16 @@
+---
+- name: Créer les répertoires nécessaires
+  win_file:
+    path: "{{ item }}"
+    state: directory
+  loop:
+    - "{{ fim_win_log_dir }}"
+    - "{{ fim_win_db_dir }}"
+    - "{{ fim_win_config_path | dirname }}"
+    - "{{ fim_win_rules_path | dirname }}"
+
+- name: Télécharger le binaire FIM
+  win_get_url:
+    url: "{{ fim_win_binary_url }}"
+    dest: "{{ fim_win_binary_path }}"
+

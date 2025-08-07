@@ -1,0 +1,112 @@
+---
+- name: Installer les dépendances Windows pour FIM
+  block:
+    - name: Installer Chocolatey si absent
+      win_chocolatey:
+        name: chocolatey
+        state: present
+      ignore_errors: yes
+
+    - name: Installer Visual C++ Redistributable 2015-2022
+      win_chocolatey:
+        name: vcredist140
+        state: present
+      ignore_errors: yes
+
+    - name: Installer .NET Framework 4.8 si nécessaire
+      win_chocolatey:
+        name: netfx-4.8
+        state: present
+      ignore_errors: yes
+
+    - name: Redémarrer si des dépendances ont été installées
+      win_reboot:
+        reboot_timeout: 300
+      when: ansible_reboot_pending is defined and ansible_reboot_pending
+      ignore_errors: yes
+
+  tags: dependencies
+
+- name: Créer le service Windows FIM - Version robuste
+  win_shell: |
+    # Variables
+    $serviceName = "FIM-Agent"
+    $binaryPath = "C:\ProgramData\fim\fim.exe"
+    $configPath = "C:\ProgramData\fim\Windows.yml"
+    
+    # Vérifier que les fichiers existent
+    if (-not (Test-Path $binaryPath)) {
+        Write-Output "ERREUR: Binaire non trouvé: $binaryPath"
+        exit 1
+    }
+    
+    if (-not (Test-Path $configPath)) {
+        Write-Output "ERREUR: Configuration non trouvée: $configPath"
+        exit 1
+    }
+    
+    # Construire la commande pour le service
+    $serviceCommand = "`"$binaryPath`" --config `"$configPath`""
+    Write-Output "Commande service: $serviceCommand"
+    
+    # Supprimer ancien service (ignorer les erreurs)
+    sc.exe delete $serviceName 2>$null
+    Start-Sleep -Seconds 2
+    
+    # Créer le nouveau service
+    Write-Output "Création du service..."
+    $createOutput = sc.exe create $serviceName binPath= $serviceCommand start= auto DisplayName= "Achiefs File Integrity Monitor" 2>&1
+    $createCode = $LASTEXITCODE
+    
+    Write-Output "Code retour création: $createCode"
+    Write-Output "Sortie création: $createOutput"
+    
+    if ($createCode -eq 0) {
+        Write-Output "SUCCESS: Service créé"
+        
+        # Ajouter description
+        sc.exe description $serviceName "Surveillance d'intégrité des fichiers" 2>$null
+        
+        # Vérifier que le service existe
+        $service = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
+        if ($service) {
+            Write-Output "VERIFIED: Service existe - Status: $($service.Status)"
+        } else {
+            Write-Output "ERROR: Service non trouvé après création"
+            exit 1
+        }
+    } else {
+        Write-Output "ERROR: Échec création service"
+        exit 1
+    }
+  register: robust_service_creation
+  when: fim_create_service | default(true)
+
+- name: Afficher le résultat détaillé
+  debug:
+    var: robust_service_creation.stdout_lines
+
+- name: Démarrer le service FIM - Version simple
+  win_shell: |
+    try {
+        $service = Get-Service -Name "FIM-Agent" -ErrorAction Stop
+        if ($service.Status -ne "Running") {
+            Write-Output "Démarrage du service..."
+            Start-Service -Name "FIM-Agent" -ErrorAction Stop
+            Start-Sleep -Seconds 5
+            
+            $newStatus = (Get-Service -Name "FIM-Agent").Status
+            Write-Output "Service démarré - Nouveau statut: $newStatus"
+        } else {
+            Write-Output "Service déjà en cours d'exécution"
+        }
+    } catch {
+        Write-Output "ERREUR démarrage: $($_.Exception.Message)"
+        
+        # Essayer un démarrage manuel avec sc.exe
+        Write-Output "Tentative avec sc.exe..."
+        $startOutput = sc.exe start "FIM-Agent" 2>&1
+        Write-Output "Résultat sc.exe: $startOutput"
+    }
+  register: simple_service_start
+  when: fim_create_service | default(true)

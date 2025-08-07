@@ -1,0 +1,53 @@
+node: "FIM"
+
+# Events configuration, where to store produced events
+events:
+  watcher: Recommended
+  destination: file
+  file: C:\ProgramData\fim\events.json
+  max_file_checksum: 128 #default 64MB
+
+
+# Monitor folder or files.
+monitor:
+  - path: C:\config.sys
+  - path: C:\boot.ini
+  - path: C:\autoexec.bat
+  - path: C:\Program Files\
+    labels: ["Program Files", "windows"]
+    exclude:
+      - "C:\\Program Files\\SplunkUniversalForwarder\\var\\spool"
+      - "C:\\Program Files\\SplunkUniversalForwarder\\var\\log"
+      - "C:\\Program Files\\SplunkUniversalForwarder\\var\\lib\\splunk\\modinputs"
+    ignore:
+      - ".log"
+  - path: C:\Program Files (x86)
+    labels: ["Program Files (x86)", "windows"]
+    ignore:
+      - ".log"
+  - path: C:\Windows\
+    labels: ["system", "windows"]
+    allowed:
+      - ".bat"
+      - ".cfg"
+      - ".conf"
+      - ".config"
+      - ".dll"
+      - ".exe"
+      - ".ini"
+      - ".sys"
+      - ".ps1"
+      - ".vbs"
+
+# Database for files checksum storage
+hashscanner:
+  enabled: true
+  file: C:\ProgramData\fim\fim.db
+  interval: 1440 # Full rescan every days
+  algorithm: sh256
+
+# App procedure and errors logging
+log:
+  file: C:\ProgramData\fim\fim.log
+  # Available levels [debug, info, error, warning]
+  level: info

@@ -1,0 +1,134 @@
+node: "FIM"
+
+# Events configuration
+events:
+  watcher: Recommended
+  destination: file
+  file: C:\ProgramData\fim\events.json
+  max_file_checksum: 128
+  resolve_user: true
+  who_data: true
+  log_all_events: true  # ← Activé pour debug initial
+
+# Monitor configuration CORRIGÉE
+monitor:
+  # ❌ SUPPRIMER ces fichiers qui n'existent plus :
+  # - path: C:\config.sys
+  # - path: C:\boot.ini  
+  # - path: C:\autoexec.bat
+  
+  # ✅ FICHIERS MODERNES CRITIQUES
+  - path: C:\Windows\System32\drivers\etc\hosts
+    labels: ["hosts", "network", "critical"]
+  
+  - path: C:\Windows\System32\config\
+    labels: ["registry", "system", "critical"]
+    allowed:
+      - ".pol"
+      - ".dat"
+    exclude:
+      - "C:\\Windows\\System32\\config\\TxR"  # Très actif
+      - "C:\\Windows\\System32\\config\\systemprofile"
+  
+  # Program Files avec exclusions améliorées
+  - path: C:\Program Files\
+    labels: ["Program Files", "windows"]
+    exclude:
+      # Splunk
+      - "C:\\Program Files\\SplunkUniversalForwarder\\var\\spool"
+      - "C:\\Program Files\\SplunkUniversalForwarder\\var\\log"
+      - "C:\\Program Files\\SplunkUniversalForwarder\\var\\lib\\splunk\\modinputs"
+      - "C:\\Program Files\\SplunkUniversalForwarder\\var\\lib\\splunk\\fishbucket"
+      # Applications très actives
+      - "C:\\Program Files\\Windows Defender"
+      - "C:\\Program Files\\Microsoft\\EdgeUpdate"
+      - "C:\\Program Files\\Google\\Update"
+      # FIM lui-même
+      - "C:\\Program Files\\fim"
+    ignore:
+      - ".log"
+      - ".tmp"
+      - ".temp"
+      - ".cache"
+      - ".lock"
+      - ".etl"
+      - ".evtx"
+  
+  - path: C:\Program Files (x86)\
+    labels: ["Program Files (x86)", "windows"]
+    exclude:
+      - "C:\\Program Files (x86)\\Microsoft\\EdgeUpdate"
+      - "C:\\Program Files (x86)\\Google\\Update"
+      - "C:\\Program Files (x86)\\Windows Defender"
+    ignore:
+      - ".log"
+      - ".tmp"
+      - ".temp"
+      - ".cache"
+      - ".lock"
+      - ".etl"
+      - ".evtx"
+  
+  # Windows System32 - SURVEILLANCE ÉLARGIE
+  - path: C:\Windows\System32\
+    labels: ["system32", "windows", "critical"]
+    allowed:
+      - ".exe"
+      - ".dll"
+      - ".sys"
+      - ".bat"
+      - ".ps1"
+      - ".vbs"
+      - ".msi"
+      - ".pol"  # Group Policy
+      - ".inf"  # Driver info
+      - ".cat"  # Catalog files
+    exclude:
+      # Répertoires très actifs à exclure
+      - "C:\\Windows\\System32\\LogFiles"
+      - "C:\\Windows\\System32\\winevt\\Logs"
+      - "C:\\Windows\\System32\\sru"
+      - "C:\\Windows\\System32\\wbem\\Logs"
+      - "C:\\Windows\\System32\\config\\TxR"
+      - "C:\\Windows\\System32\\catroot2"
+      - "C:\\Windows\\System32\\wdi"
+  
+  # AJOUT : Répertoires utilisateur critiques
+  - path: C:\Users\
+    labels: ["users", "profiles"]
+    allowed:
+      - ".bat"
+      - ".ps1"
+      - ".vbs"
+      - ".exe"
+      - ".msi"
+    exclude:
+      - "C:\\Users\\*\\AppData\\Local\\Temp"
+      - "C:\\Users\\*\\AppData\\Local\\Microsoft\\Windows\\Temporary Internet Files"
+      - "C:\\Users\\*\\AppData\\Roaming\\Microsoft\\Windows\\Recent"
+      - "C:\\Users\\*\\AppData\\Local\\Microsoft\\Windows\\WebCache"
+    ignore:
+      - ".log"
+      - ".tmp"
+      - ".temp"
+      - ".cache"
+      - ".lock"
+  
+  # AJOUT : Test simple pour vérifier que FIM fonctionne
+  - path: C:\temp\
+    labels: ["temp", "test"]
+    ignore:
+      - ".log"
+      - ".tmp"
+
+# Database configuration
+hashscanner:
+  enabled: true
+  file: C:\ProgramData\fim\fim.db
+  interval: 1440  # 24h initialement, augmenter après tests
+  algorithm: sh256
+
+# Logging - NIVEAU DEBUG POUR INITIAL
+log:
+  file: C:\ProgramData\fim\fim.log
+  level: debug  # ← Changé à debug pour voir ce qui se passe
