@@ -1,0 +1,9 @@
+fim_git_repo: "https://github.com/achiefs/fim.git"
+fim_dest_dir: "/opt/fim"
+fim_binary_path: "/usr/local/bin/fim"
+fim_config_path: "/etc/fim/config.yml"
+fim_configrule_path: "/etc/fim/rules.yml"
+fim_log_dir: "/var/log/fim"
+fim_db_dir: "/var/lib/fim"
+fim_service_name: "fim-agent"
+

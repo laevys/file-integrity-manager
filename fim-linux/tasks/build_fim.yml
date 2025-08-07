@@ -1,0 +1,52 @@
+---
+- name: Cloner le dépôt FIM
+  git:
+    repo: "{{ fim_git_repo }}"
+    dest: "{{ fim_dest_dir }}"
+    force: yes  # Force pour éviter "Local modifications exist"
+    update: yes
+
+- name: Installer les dépendances de compilation
+  package:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - gcc
+    - "{{ 'openssl-devel' if ansible_os_family == 'RedHat' else 'libssl-dev' }}"
+    - "{{ 'pkgconfig' if ansible_os_family == 'RedHat' else 'pkg-config' }}"
+
+- name: Compiler FIM avec cargo sur RedHat
+  shell: |
+    source $HOME/.cargo/env
+    cd {{ fim_dest_dir }}
+    cargo build --release
+  args:
+    creates: "{{ fim_dest_dir }}/target/release/fim"
+  when: ansible_os_family == "RedHat"
+
+- name: Compiler FIM avec cargo sur Debian
+  shell: |
+    export PATH=$HOME/.cargo/bin:$PATH
+    cd {{ fim_dest_dir }}
+    cargo build --release
+  args:
+    creates: "{{ fim_dest_dir }}/target/release/fim"
+  when: ansible_os_family == "Debian"
+
+- name: Vérifier que le binaire existe
+  stat:
+    path: "{{ fim_dest_dir }}/target/release/fim"
+  register: fim_binary_check
+
+- name: Échouer si binaire non créé
+  fail:
+    msg: "Compilation échouée - binaire fim non trouvé"
+  when: not fim_binary_check.stat.exists
+
+- name: Copier le binaire compilé
+  copy:
+    src: "{{ fim_dest_dir }}/target/release/fim"
+    dest: "{{ fim_binary_path }}"
+    mode: '0755'
+    remote_src: yes
+  when: fim_binary_check.stat.exists

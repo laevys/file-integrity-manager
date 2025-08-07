@@ -1,0 +1,53 @@
+---
+# Crée les dossiers nécessaires pour la config, les logs et la BDD de FIM
+- name: Créer le dossier de configuration
+  file:
+    path: "{{ fim_config_path | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Créer le dossier de logs
+  file:
+    path: "{{ fim_log_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Créer le dossier de base de données
+  file:
+    path: "{{ fim_db_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+# Déploie le template / fichier Linux.yml vers /etc/fim/config.yml
+- name: Déployer le fichier de configuration FIM
+  copy:
+    src:     Linux.yml
+    dest:    "{{ fim_config_path }}"
+    owner:   root
+    group:   root
+    mode:    '0644'
+
+- name: Déployer le fichier de configuration FIMBI
+  copy:
+    src:     rules.yml
+    dest:    "{{ fim_configrule_path }}"
+    owner:   root
+    group:   root
+    mode:    '0644'
+
+- name: Vérifier que la config a bien été déployée
+  stat:
+    path: "{{ fim_config_path }}"
+  register: config_deployed
+
+- name: Échouer si la config n’existe pas après copie
+  fail:
+    msg: "❌ Configuration FIM non déployée correctement"
+  when: not config_deployed.stat.exists
+

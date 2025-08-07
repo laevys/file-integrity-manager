@@ -1,0 +1,158 @@
+---
+- name: Installer auditd sur Red Hat
+  package:
+    name: 
+      - audit
+      - audit-libs
+    state: present
+  when: ansible_os_family == "RedHat"
+
+- name: Installer auditd sur Debian
+  package:
+    name: 
+      - auditd
+      - audispd-plugins
+    state: present
+  when: ansible_os_family == "Debian"
+
+# NOUVEAU: Configuration auditd de base
+#- name: Configuration auditd de base
+#  copy:
+#    content: |
+#      log_file = /var/log/audit/audit.log
+#      log_format = RAW
+#      log_group = adm
+#      priority_boost = 4
+#      flush = INCREMENTAL
+#      freq = 20
+#      num_logs = 5
+#      disp_qos = lossy
+#      dispatcher = /sbin/audispd
+#      name_format = NONE
+#      max_log_file = 8
+#      max_log_file_action = ROTATE
+#      space_left = 75
+#      space_left_action = SYSLOG
+#      action_mail_acct = root
+#      admin_space_left = 50
+#      admin_space_left_action = SUSPEND
+#      disk_full_action = SUSPEND
+#      disk_error_action = SUSPEND
+#      use_libwrap = yes
+#      tcp_listen_queue = 5
+#      tcp_max_per_addr = 1
+#      tcp_client_max_idle = 0
+#      enable_krb5 = no
+#      krb5_principal = auditd
+#    dest: /etc/audit/auditd.conf
+#    owner: root
+#    group: root
+#    mode: '0640'
+#    backup: yes
+#  register: auditd_config_updated
+
+# NOUVEAU: Plugin audit pour FIM (ESSENTIEL pour who_data)
+- name: Créer plugin audit pour FIM
+  copy:
+    content: |
+      active = yes
+      direction = out
+      path = builtin_af_unix
+      type = builtin
+      args = 0640 /var/run/audispd_events
+      format = string
+    dest: /etc/audit/plugins.d/fim.conf
+    owner: root
+    group: root
+    mode: '0644'
+  register: fim_plugin_created
+
+- name: Créer le répertoire des règles audit
+  file:
+    path: /etc/audit/rules.d
+    state: directory
+    mode: '0750'
+
+- name: Déployer les règles audit pour FIM
+  copy:
+    content: |
+      # Règles FIM pour capturer les modifications avec info utilisateur
+      # Augmenter la taille du buffer pour éviter la perte d'événements
+      -b 8192
+      
+      # Règles pour capturer qui fait quoi
+      -w /etc -p wa -k fim_config
+      -w /bin -p x -k fim_bin_exec
+      -w /sbin -p x -k fim_sbin_exec
+      -w /usr/bin -p x -k fim_usr_bin_exec
+      -w /usr/sbin -p x -k fim_usr_sbin_exec
+      -w /var/spool/cron -p wa -k fim_cron
+      -w /opt -p wa -k fim_opt
+      
+      # Capturer les changements de permissions et propriétaires
+      -a always,exit -F arch=b64 -S chmod,fchmod,fchmodat -F auid>=1000 -F auid!=4294967295 -k fim_perm_mod
+      -a always,exit -F arch=b32 -S chmod,fchmod,fchmodat -F auid>=1000 -F auid!=4294967295 -k fim_perm_mod
+      -a always,exit -F arch=b64 -S chown,fchown,fchownat,lchown -F auid>=1000 -F auid!=4294967295 -k fim_owner_mod
+      -a always,exit -F arch=b32 -S chown,fchown,fchownat,lchown -F auid>=1000 -F auid!=4294967295 -k fim_owner_mod
+      
+      # Capturer les créations/suppressions de fichiers
+      -a always,exit -F arch=b64 -S unlink,unlinkat,rename,renameat -F auid>=1000 -F auid!=4294967295 -k fim_delete
+      -a always,exit -F arch=b32 -S unlink,unlinkat,rename,renameat -F auid>=1000 -F auid!=4294967295 -k fim_delete
+    dest: /etc/audit/rules.d/99-fim.rules
+    mode: '0640'
+  register: audit_rules_deployed
+
+# NOUVEAU: Redémarrage propre d'auditd
+- name: Arrêter auditd proprement
+  shell: |
+    if pgrep auditd > /dev/null; then
+      systemctl stop auditd 2>/dev/null || true
+      pkill -TERM auditd 2>/dev/null || true
+      sleep 3
+      pkill -KILL auditd 2>/dev/null || true
+    fi
+    # Nettoyer les PIDs
+    rm -f /var/run/auditd.pid /var/run/auditd.lock 2>/dev/null || true
+    #when: auditd_config_updated.changed or fim_plugin_created.changed or audit_rules_deployed.changed
+  when: fim_plugin_created.changed or audit_rules_deployed.changed
+
+- name: Démarrer auditd
+  shell: |
+    # Démarrer auditd
+    systemctl start auditd
+    sleep 3
+    
+    # Charger les règles
+    if command -v augenrules >/dev/null 2>&1; then
+      augenrules --load
+    else
+      auditctl -R /etc/audit/rules.d/99-fim.rules 2>/dev/null || true
+    fi
+  register: auditd_start_result
+  ignore_errors: yes
+
+- name: Vérifier qu'auditd fonctionne et que le socket est créé
+  shell: |
+    echo "=== AUDITD STATUS ==="
+    systemctl is-active auditd || echo "auditd not active"
+    
+    echo "=== SOCKET CHECK ==="
+    ls -la /var/run/audispd_events 2>/dev/null && echo "Socket FIM: OK" || echo "Socket FIM: MANQUANT"
+    
+    echo "=== RÈGLES AUDIT ==="
+    auditctl -l | head -3 || echo "Pas de règles chargées"
+    
+    echo "=== PROCESSUS AUDIT ==="
+    ps aux | grep -E "(auditd|audispd)" | grep -v grep || echo "Pas de processus audit"
+  register: audit_verification
+  changed_when: false
+
+- name: Afficher la vérification audit
+  debug:
+    var: audit_verification.stdout_lines
+
+- name: Activer auditd au démarrage
+  systemd:
+    name: auditd
+    enabled: yes
+  ignore_errors: yes
