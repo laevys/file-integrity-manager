@@ -1,0 +1,45 @@
+---
+- name: Installer dépendances pour Rust
+  package:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - curl
+    - gcc
+    - make
+    - git
+
+# Pour Red Hat/CentOS/Rocky/AlmaLinux
+- name: Installer Rust via EPEL sur Red Hat
+  block:
+    - name: Installer EPEL
+      package:
+        name: epel-release
+        state: present
+    
+    - name: Installer Rust et Cargo
+      package:
+        name: 
+          - rust
+          - cargo
+        state: present
+  when: ansible_os_family == "RedHat"
+
+# Pour Debian/Ubuntu
+- name: Installer Rust via apt sur Debian
+  package:
+    name:
+      - rustc
+      - cargo
+    state: present
+  when: ansible_os_family == "Debian"
+
+# Vérification de l'installation
+- name: Vérifier l'installation de Rust
+  command: cargo --version
+  register: cargo_version
+  changed_when: false
+
+- name: Afficher la version de Cargo
+  debug:
+    msg: "Cargo installé: {{ cargo_version.stdout }}"

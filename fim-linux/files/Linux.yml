@@ -1,0 +1,98 @@
+node: "FIM"
+
+# Events configuration, where to store produced events
+events:
+  watcher: Recommended
+  destination: file
+  file: /var/log/fim/events.json
+  max_file_checksum: 128 #default 64MB
+
+# Audit extended files and folders information.
+# Only Available on Linux with Audit installed.
+# Please check that Audit daemon is installed on your system before enable it.
+#audit:
+#  - path: /tmp
+#    labels: ["tmp", "linux"]
+#    ignore: [".swp"]
+
+# Simple files and folders information
+monitor:
+  - path: /bin
+    labels: ["bin", "linux"]
+  - path: /usr/bin
+    labels: ["usr/bin", "linux"]
+  - path: /etc
+    labels: ["etc", "linux"]
+    ignore:
+      - ".swp"
+      - ".swx"
+      - ".log"
+      - ".conf~"
+  - path: /boot
+    labels: ["boot", "linux"]
+  - path: /sbin
+    labels: ["sbin", "linux"]
+  - path: /usr/local/bin
+    labels: ["usr/local/bin", "linux"]
+  - path: /usr/local/sbin
+    labels: ["usr/local/sbin", "linux"]
+  - path: /usr/sbin
+    labels: ["usr/sbin", "linux"]
+  - path: /usr/share/keyrings
+    labels: ["usr/share/keyrings", "linux"]
+  - path: /var/spool/cron
+    labels: ["var/spool/cron", "linux"]
+    ignore:
+      - ".swp"
+      - ".swx"
+      - ".log"
+      - ".conf~"
+  - path: /opt
+    labels: ["opt", "linux"]
+    ignore:
+      - ".swp"
+      - ".swx"
+      - ".log"
+      - ".txt"
+      - ".gz"
+      - ".zip"
+      - ".conf~"
+      - ".out"
+    exclude:
+      - "/opt/cybereason/sensor/Database"
+      - "/opt/cybereason/sensor/Logs"
+      - "/opt/cybereason/sensor/crs"
+      - "/opt/cybereason/sensor/av_engine_a"
+      - "/opt/cybereason/sensor/av_engine_b"
+      - "/opt/cybereason/sensor/av_engine_c"
+      - "/opt/cybereason/sensor/av_engine_d"
+      - "/opt/cybereason/sensor/av_engine_e"
+      - "/opt/cybereason/sensor/av_engine_f"
+      - "/opt/cybereason/sensor/av_engine_g"
+      - "/opt/splunkforwarder/var/log"
+      - "/opt/splunkforwarder/var/lib/splunk/fishbucket"
+      - "/opt/splunkforwarder/var/run"
+  - path: /app
+    labels: ["app", "linux"]
+    ignore:
+      - ".swp"
+      - ".swx"
+      - ".log"
+      - ".txt"
+      - ".gz"
+      - ".zip"
+      - ".conf~"
+      - ".out"
+
+# Database for files checksum storage
+hashscanner:
+  enabled: true
+  file: /var/lib/fim/fim.db # Hash database
+  interval: 1440 # Full rescan every days
+  algorithm: sh256
+
+# App procedure and errors logging
+log:
+  file: /var/log/fim/fim.log
+  # Available levels [debug, info, error, warning]
+  level: info

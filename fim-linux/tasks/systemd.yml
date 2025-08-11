@@ -1,0 +1,17 @@
+---
+- name: Déployer le service systemd pour FIM
+  template:
+    src: fim-agent.service.j2
+    dest: /etc/systemd/system/{{ fim_service_name }}.service
+    mode: '0644'
+
+- name: Recharger systemd
+  systemd:
+    daemon_reload: yes
+
+- name: Activer et démarrer le service FIM
+  systemd:
+    name: "{{ fim_service_name }}"
+    enabled: yes
+    state: started
+

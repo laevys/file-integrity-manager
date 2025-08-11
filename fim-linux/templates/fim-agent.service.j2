@@ -1,0 +1,12 @@
+[Unit]
+Description=Achiefs File Integrity Monitor Agent
+After=network.target auditd.service
+
+[Service]
+Type=simple
+ExecStart={{ fim_binary_path }} --config {{ fim_config_path }}
+Restart=on-failure
+User=root
+
+[Install]
+WantedBy=multi-user.target
